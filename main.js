@@ -32,17 +32,22 @@ class SMBVttStarter {
         this.cameraYaw = 0;
         // Drag state for moving height objects on the terra layer
         this.isDraggingHeight = false;
+        // Grab stat display elements.  These exist in the markup and are used to update
+        // the on‑screen token position, camera focus and zoom values.
         this.tokenPositionValue = document.querySelector('#token-position');
-        this.cameraFocusValue = document.querySelector('#camera-focus');
-        this.zoomLevelValue = document.querySelector('#zoom-level');
-        this.pickFolderButton = document.querySelector('#pick-folder');
-        this.pickFilesButton = document.querySelector('#pick-files');
-        this.musicFileInput = document.querySelector('#music-files');
-        this.prevTrackButton = document.querySelector('#prev-track');
-        this.nextTrackButton = document.querySelector('#next-track');
-        this.playlistContainer = document.querySelector('#playlist');
-        this.musicStatus = document.querySelector('#music-status');
-        this.audioPlayer = document.querySelector('#music-player');
+        this.cameraFocusValue   = document.querySelector('#camera-focus');
+        this.zoomLevelValue     = document.querySelector('#zoom-level');
+
+        // Music and file picker elements were removed from the markup in this build.
+        // Leave these properties undefined to avoid referencing missing DOM elements.
+        this.pickFolderButton   = undefined;
+        this.pickFilesButton    = undefined;
+        this.musicFileInput     = undefined;
+        this.prevTrackButton    = undefined;
+        this.nextTrackButton    = undefined;
+        this.playlistContainer  = undefined;
+        this.musicStatus        = undefined;
+        this.audioPlayer        = undefined;
         // Music functionality removed in this build; playlist and audio controls are unused.
         this.playlist = [];
         this.currentTrackIndex = -1;
@@ -109,23 +114,30 @@ class SMBVttStarter {
 
         const board = new pc.Entity('Board');
         board.addComponent('model', { type: 'plane' });
-        // Scale the plane to match the board dimensions.  Use (width, 1, height)
+        // Scale the plane to match the board dimensions.  Use (width, height, 1)
         // so that after a −90° rotation the X and Z axes represent the
         // grid columns and rows respectively, and the Y axis becomes the
-        // thickness of the board.  Using a thickness of 1 keeps the board
-        // sufficiently thin relative to the camera distance.
-        board.setLocalScale(this.boardWidth, 1, this.boardHeight);
+        // thickness of the board.  Using the board height for the second
+        // component ensures the board’s row count maps to the Z axis after
+        // rotation, while a thickness of 1 keeps the board sufficiently
+        // thin relative to the camera distance.
+        board.setLocalScale(this.boardWidth, this.boardHeight, 1);
         // Rotate so the plane lies flat.  A −90° rotation around the X axis
         // maps the plane’s original Y dimension to the world Z dimension,
         // giving us an X/Z grid with its surface normal pointing upwards.
+        // This ensures the grid lays horizontally on the ground plane.
         board.setLocalEulerAngles(-90, 0, 0);
 
         // Create a material with a grid texture sized to the current board
         // dimensions.  Using emissive and diffuse maps together prevents
         // lighting from darkening the grid too much.
         const material = new pc.StandardMaterial();
+        // Build the initial grid texture and store a reference so it can be destroyed
+        // when the board dimensions change.  Without destroying old textures the
+        // application will leak GPU memory each time a new grid is generated.
         const gridTexture = this.buildGridTexture(this.boardWidth, this.boardHeight);
-        material.diffuseMap = gridTexture;
+        this.gridTexture = gridTexture;
+        material.diffuseMap  = gridTexture;
         material.emissiveMap = gridTexture;
         material.diffuse.set(0.5, 0.54, 0.6);
         material.emissive.set(0.55, 0.6, 0.7);
@@ -154,6 +166,10 @@ class SMBVttStarter {
     createSelectionMarker() {
         const marker = new pc.Entity('SelectionMarker');
         marker.addComponent('model', { type: 'plane' });
+        // Rotate the marker plane to lie horizontally.  A −90° rotation
+        // matches the orientation of the game board so that the marker sits
+        // flat on the grid.  Without this rotation the marker would appear as
+        // a vertical billboard.
         marker.setLocalEulerAngles(-90, 0, 0);
         marker.setLocalScale(0.95, 1, 0.95);
         marker.setLocalPosition(0, 0.02, 0);
@@ -209,40 +225,46 @@ class SMBVttStarter {
             }
             // If terra layer is active, allow selection and dragging of height objects instead of token
             if (this.currentLayer === 'terra') {
-                // Only respond to left button
+                // On the terra layer left‑click selects and drags height objects.  Cancel any
+                // ongoing token drag to avoid conflicting drag states.
                 if (event.button === 0) {
-                    const point = this.toCanvasCoordinates(event.clientX, event.clientY);
+                    this.isDraggingToken = false;
+                    this.isDraggingHeight = false;
+                    const point     = this.toCanvasCoordinates(event.clientX, event.clientY);
                     const worldPoint = this.screenToBoard(point.x, point.y);
-                    if (!worldPoint)
+                    if (!worldPoint) {
                         return;
+                    }
                     // Attempt to pick an existing height object
                     for (let i = 0; i < this.heightObjects.length; i++) {
-                        const obj = this.heightObjects[i];
-                        const pos = obj.entity.getPosition();
-                        const dx = worldPoint.x - pos.x;
-                        const dz = worldPoint.z - pos.z;
+                        const obj  = this.heightObjects[i];
+                        const pos  = obj.entity.getPosition();
+                        const dx   = worldPoint.x - pos.x;
+                        const dz   = worldPoint.z - pos.z;
                         const distSq = dx * dx + dz * dz;
                         if (distSq <= obj.radius * obj.radius) {
                             // Select this object for editing and dragging
-                            this.isDraggingHeight = true;
+                            this.isDraggingHeight   = true;
                             this.pendingHeightIndex = i;
-                            // Open the settings popup pre-filled with the object's values
+                            // Open the settings popup pre‑filled with the object's values
                             this.openHeightPopup(i);
                             return;
                         }
                     }
-                    // If no object selected, do nothing on pointerdown (creation is done via button)
+                    // If no object is selected, leave height dragging off.  New objects are created via the button.
                 }
                 return;
             }
             // Otherwise (hex layer or other), handle token dragging on left button
             if (event.button === 0) {
-                this.isDraggingToken = true;
-                const point = this.toCanvasCoordinates(event.clientX, event.clientY);
+                // Cancel any height drag when beginning token drag
+                this.isDraggingHeight = false;
+                this.isDraggingToken  = true;
+                const point     = this.toCanvasCoordinates(event.clientX, event.clientY);
                 const worldPoint = this.screenToBoard(point.x, point.y);
                 if (worldPoint) {
-                    const halfX = this.boardWidth / 2;
-                    const halfZ = this.boardHeight / 2;
+                    const halfX  = this.boardWidth  / 2;
+                    const halfZ  = this.boardHeight / 2;
                     const snappedX = pc.math.clamp(Math.round(worldPoint.x), -halfX, halfX);
                     const snappedZ = pc.math.clamp(Math.round(worldPoint.z), -halfZ, halfZ);
                     this.targetPosition.set(snappedX, this.targetPosition.y, snappedZ);
@@ -557,6 +579,7 @@ class SMBVttStarter {
         // Enforce the board orientation on every frame.  Sometimes changing
         // the board scale or other factors can reset the plane’s rotation.
         if (this.board) {
+            // Keep the board horizontal each frame.  See createBoard() for details.
             this.board.setLocalEulerAngles(-90, 0, 0);
         }
         this.updateCompass();
@@ -1052,16 +1075,25 @@ class SMBVttStarter {
         this.boardHeight = height;
         // Update board scaling and texture
         if (this.board) {
-            this.board.setLocalScale(width, 1, height);
-            // Reapply the rotation on the X axis.  Changing scale on some
-            // primitive types can internally reset transformation matrices,
-            // causing the plane to revert to its default orientation.  By
-            // explicitly setting the euler angles again we ensure the board
-            // remains flat on the X/Z plane.
+            // Adjust the board scale so that its X dimension matches the
+            // column count (width), its Y dimension matches the row count
+            // (height) and its Z dimension remains 1 for thickness.  This
+            // orientation ensures that after a −90° rotation the height
+            // value maps to the Z axis.
+            this.board.setLocalScale(width, height, 1);
+            // Reapply the rotation on the X axis.  Using −90° keeps the
+            // board horizontal.  Without this, scaling can reset the
+            // orientation.
             this.board.setLocalEulerAngles(-90, 0, 0);
+            // Destroy any previously generated grid texture to prevent GPU
+            // memory leaks.  Only destroy if a texture exists.
+            if (this.gridTexture) {
+                this.gridTexture.destroy();
+            }
             const newGrid = this.buildGridTexture(width, height);
+            this.gridTexture = newGrid;
             const material = this.board.model.material;
-            material.diffuseMap = newGrid;
+            material.diffuseMap  = newGrid;
             material.emissiveMap = newGrid;
             material.update();
         }
