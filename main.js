@@ -99,14 +99,27 @@ class SMBVttStarter {
         ambient.set(0.34, 0.37, 0.44);
     }
     createBoard() {
-        // Create the main board plane.  It is scaled on the X/Z axes
-        // according to the current board width and height.  The plane is
-        // rotated so its normal points upwards (PlayCanvas planes lie in the
-        // X/Y plane by default).
+        // Create the main board plane.  The plane primitive provided by
+        // PlayCanvas is oriented in the X/Y plane by default, which means
+        // without rotation it acts as a vertical wall.  To lay the board
+        // flat on the X/Z plane, we rotate it around the X axis so its
+        // normal points upwards.  Additionally, we force this rotation in
+        // updateBoardDimensions to prevent it being lost if the scale is
+        // modified later.
+
         const board = new pc.Entity('Board');
         board.addComponent('model', { type: 'plane' });
+        // Scale the plane to match the board dimensions.  Use (width, 1, height)
+        // so that after a −90° rotation the X and Z axes represent the
+        // grid columns and rows respectively, and the Y axis becomes the
+        // thickness of the board.  Using a thickness of 1 keeps the board
+        // sufficiently thin relative to the camera distance.
         board.setLocalScale(this.boardWidth, 1, this.boardHeight);
+        // Rotate so the plane lies flat.  A −90° rotation around the X axis
+        // maps the plane’s original Y dimension to the world Z dimension,
+        // giving us an X/Z grid with its surface normal pointing upwards.
         board.setLocalEulerAngles(-90, 0, 0);
+
         // Create a material with a grid texture sized to the current board
         // dimensions.  Using emissive and diffuse maps together prevents
         // lighting from darkening the grid too much.
@@ -122,10 +135,12 @@ class SMBVttStarter {
         board.model.material = material;
         this.app.root.addChild(board);
         this.board = board;
+
         // Create a thin rim around the board so the edges are easier to see.
         const rim = new pc.Entity('BoardRim');
         rim.addComponent('model', { type: 'box' });
         rim.setLocalScale(this.boardWidth + 0.35, 0.16, this.boardHeight + 0.35);
+        // Position the rim so that its top surface is level with the board plane.
         rim.setLocalPosition(0, -0.12, 0);
         const rimMaterial = new pc.StandardMaterial();
         rimMaterial.diffuse.set(0.09, 0.11, 0.14);
@@ -539,6 +554,11 @@ class SMBVttStarter {
     }
     update(dt) {
         // Update the compass orientation each frame
+        // Enforce the board orientation on every frame.  Sometimes changing
+        // the board scale or other factors can reset the plane’s rotation.
+        if (this.board) {
+            this.board.setLocalEulerAngles(-90, 0, 0);
+        }
         this.updateCompass();
         this.animationTime += dt;
         this.handleKeyboardPan(dt);
@@ -1033,6 +1053,12 @@ class SMBVttStarter {
         // Update board scaling and texture
         if (this.board) {
             this.board.setLocalScale(width, 1, height);
+            // Reapply the rotation on the X axis.  Changing scale on some
+            // primitive types can internally reset transformation matrices,
+            // causing the plane to revert to its default orientation.  By
+            // explicitly setting the euler angles again we ensure the board
+            // remains flat on the X/Z plane.
+            this.board.setLocalEulerAngles(-90, 0, 0);
             const newGrid = this.buildGridTexture(width, height);
             const material = this.board.model.material;
             material.diffuseMap = newGrid;
@@ -1041,6 +1067,10 @@ class SMBVttStarter {
         }
         // Update rim scale
         if (this.boardRim) {
+            // The rim is a box oriented in the X/Z plane by default.  Adjust
+            // its scale to hug the board edges without altering its
+            // orientation.  Since a box is symmetrical along its axes, no
+            // rotation is necessary.
             this.boardRim.setLocalScale(width + 0.35, 0.16, height + 0.35);
         }
         // Clamp camera focus
