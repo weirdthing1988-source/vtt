@@ -1,0 +1,552 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --panel-bg: rgba(10, 14, 22, 0.82);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --text: #eef3ff;
+  --muted: #b9c4da;
+  --accent: #89b4ff;
+  --accent-strong: #c79bff;
+  --danger: #ff7b7b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #06080d;
+  color: var(--text);
+}
+
+body {
+  position: relative;
+}
+
+canvas#application {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.panel {
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  width: min(320px, calc(100vw - 32px));
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.28);
+  z-index: 2;
+}
+
+.panel-left {
+  left: 16px;
+}
+
+.panel-right {
+  right: 16px;
+}
+
+.panel-section {
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.panel-section:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+h1,
+h2 {
+  margin: 0 0 8px;
+}
+
+h1 {
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+h2 {
+  font-size: 16px;
+}
+
+p {
+  margin: 0;
+}
+
+.muted {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.compact-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stats-grid > div {
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.value {
+  display: block;
+  margin-top: 6px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.button-row-tight {
+  margin-bottom: 10px;
+}
+
+button {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(137, 180, 255, 0.28), rgba(137, 180, 255, 0.16));
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button.secondary {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+button.track {
+  width: 100%;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+button.track.active {
+  background: linear-gradient(180deg, rgba(199, 155, 255, 0.3), rgba(137, 180, 255, 0.22));
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+button.track small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status {
+  margin-top: 10px;
+  color: var(--muted);
+  min-height: 20px;
+}
+
+.status.error {
+  color: var(--danger);
+}
+
+/*
+ * Layer selection column
+ *
+ * The layer column floats over the canvas and provides a vertical stack
+ * of buttons corresponding to the available paint layers (props, liquid,
+ * terra and hex).  Buttons display slices from the provided sprite
+ * sheet.  The bottom-most button (hex) reveals the grid size
+ * controller when selected.  The active layer is highlighted with
+ * an accent outline.
+ */
+.layer-column {
+  position: absolute;
+  top: 50%;
+  /* Position the column towards the left of the right-hand panel.  The
+     calculation uses a fixed offset equal to the panel width (320px) plus
+     its horizontal margins (16px on either side).  If the viewport is
+     narrower, the column will still remain above the content. */
+  right: calc(16px + 320px + 16px);
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  z-index: 3;
+}
+
+.layer-column button {
+  appearance: none;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  width: 72px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s;
+}
+
+.layer-column button:hover {
+  transform: translateY(-2px);
+}
+
+.layer-column button img {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  display: block;
+  object-fit: cover;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.layer-column button.active img {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/*
+ * Grid size controller
+ *
+ * This overlay displays a cross taken from the sprite sheet as a
+ * background image.  Transparent buttons cover the four directional
+ * petals to capture click events for adjusting the board’s width
+ * (columns) and height (rows).  The centre cell shows the current
+ * dimensions.  The controller is only visible when the hex layer is
+ * selected.
+ */
+.grid-control {
+  position: absolute;
+  /* Position it near the bottom-left of the canvas, leaving room for
+     the panels.  Adjust these values if the layout changes. */
+  bottom: 24px;
+  left: 24px;
+  width: 160px;
+  height: 160px;
+  /* Use a relative path for the grid cross image so it resolves correctly in the final build */
+  background-image: url('images/grid_cross.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.grid-control.hidden {
+  display: none;
+}
+
+.grid-control .grid-btn {
+  pointer-events: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.grid-control .grid-btn-top {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.grid-control .grid-btn-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.grid-control .grid-btn-bottom {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.grid-control .grid-btn-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.grid-control .grid-size-display {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  pointer-events: none;
+}
+
+#music-player {
+  width: 100%;
+}
+
+.playlist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  max-height: calc(100vh - 360px);
+  padding-right: 4px;
+}
+
+.playlist.empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+@media (max-width: 1120px) {
+  .panel {
+    width: min(280px, calc(100vw - 24px));
+  }
+}
+
+@media (max-width: 920px) {
+  .panel {
+    position: static;
+    width: auto;
+    margin: 10px;
+    max-height: none;
+  }
+
+  body {
+    overflow: auto;
+  }
+
+  canvas#application {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+  }
+}
+
+/* === Custom controls overlay === */
+
+/* Container for layer selector, add-height button and compass.  Positioned bottom-right of the viewport. */
+#controls-overlay {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  z-index: 4;
+}
+
+/* Layer selector styles */
+.layer-selector {
+  position: relative;
+}
+
+/* Active layer button */
+/* The active layer button is rectangular (wide) to match the aspect
+   ratio of the layer sprites.  Adjust the width and height to
+   approximately a 2:1 ratio based on the source images (1447×714). */
+.layer-active {
+  appearance: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: none;
+  cursor: pointer;
+  width: 96px;
+  height: 48px;
+}
+
+.layer-active img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Dropdown menu for all layers */
+.layer-menu {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--panel-bg);
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.layer-menu.hidden {
+  display: none;
+}
+
+/* Layer items use a similar aspect ratio as the active button but
+   slightly smaller. */
+.layer-item {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  width: 80px;
+  height: 40px;
+}
+
+.layer-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.layer-item.active img {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Height button styling */
+.height-btn {
+  appearance: none;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #06080d;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.height-btn:hover {
+  background: var(--accent-strong);
+}
+
+/* Compass styling */
+.compass {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 50%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  place-items: center;
+}
+
+.compass .compass-arrow {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.arrow-w {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.arrow-a {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.arrow-s {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.arrow-d {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+/* Height popup styling */
+.height-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  padding: 20px;
+  z-index: 10;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5);
+}
+
+.height-popup.hidden {
+  display: none;
+}
+
+.height-popup-content label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+/* Hide the delete button in the height popup by default.  It is shown
+   dynamically when editing an existing height object. */
+#height-delete {
+  display: none;
+}
+
+.height-popup-content input {
+  width: 60px;
+  padding: 4px;
+  border-radius: 6px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SMB VTT Version 1</title>
+    <!-- Include the stylesheet directly.  The CSS file is not processed by a bundler in this build. -->
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <canvas id="application"></canvas>
+
+    <aside class="panel panel-left">
+      <div class="panel-section">
+        <p class="eyebrow">Starter Build</p>
+        <h1>SMB VTT Version 1</h1>
+        <p class="muted">
+          Lightweight PlayCanvas VTT prototype with a simple tactical board,
+          one billboard token, drag-and-drop token movement, and layered
+          terrain editing.
+        </p>
+      </div>
+
+      <div class="panel-section">
+        <h2>Controls</h2>
+        <ul class="compact-list">
+          <li><strong>Left click &amp; drag</strong> on the board to move the token</li>
+          <li><strong>W A S D</strong> pans the camera</li>
+          <li><strong>Mouse wheel</strong> raises and lowers the camera height</li>
+          <li><strong>Middle mouse button</strong> rotates the camera around the focus point</li>
+        </ul>
+      </div>
+
+      <div class="panel-section stats-grid">
+        <div>
+          <span class="label">Token</span>
+          <span id="token-position" class="value">(0, 0)</span>
+        </div>
+        <div>
+          <span class="label">Camera focus</span>
+          <span id="camera-focus" class="value">(0.0, 0.0)</span>
+        </div>
+        <div>
+          <span class="label">Zoom</span>
+          <span id="zoom-level" class="value">10.0</span>
+        </div>
+        <div>
+          <span class="label">Grid</span>
+          <span class="value">1 unit snap</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Remove the right-hand music panel.  Music controls are disabled in this build -->
+    <!-- The remaining controls are added below as overlays on the canvas. -->
+
+    <!-- Load the PlayCanvas engine from a CDN.  This provides a global `pc` object
+         that can be referenced from our main script.  We avoid using the ES
+         module version so that the application can run without bundling. -->
+    <script src="https://cdn.jsdelivr.net/npm/playcanvas@1.65.1/build/playcanvas.min.js"></script>
+
+    <!-- Load the main application script.  It relies on the globally exposed
+         PlayCanvas `pc` object and therefore should not be loaded as a module. -->
+    <script src="main.js"></script>
+
+    <!-- Controls overlay: contains the layer selector, the add-height button, and the WASD compass. -->
+    <div id="controls-overlay">
+      <!-- Layer selector.  Displays only the active layer when collapsed.  Clicking the active layer expands the menu to show all layers. -->
+      <div id="layer-selector" class="layer-selector collapsed">
+        <!-- Active layer button will be populated dynamically in script -->
+        <button id="active-layer" class="layer-active" data-layer="hex">
+          <img src="images/hex_layer.png" alt="Hex layer" />
+        </button>
+        <!-- Container for full list of layers when expanded -->
+        <div id="layer-menu" class="layer-menu hidden">
+          <button class="layer-item" data-layer="props"><img src="images/props_layer.png" alt="Props layer" /></button>
+          <button class="layer-item" data-layer="liquid"><img src="images/liquid_layer.png" alt="Liquid layer" /></button>
+          <button class="layer-item" data-layer="terra"><img src="images/terra_layer.png" alt="Terra layer" /></button>
+          <button class="layer-item" data-layer="hex"><img src="images/hex_layer.png" alt="Hex layer" /></button>
+        </div>
+      </div>
+      <!-- Button to deploy a Terra Height modifier object -->
+      <button id="add-height" class="height-btn" title="Add Terra Height modifier">Height Modifier</button>
+      <!-- WASD compass overlay.  The arrows rotate according to the camera orientation. -->
+      <div id="compass" class="compass">
+        <div class="compass-arrow arrow-w">W</div>
+        <div class="compass-arrow arrow-a">A</div>
+        <div class="compass-arrow arrow-s">S</div>
+        <div class="compass-arrow arrow-d">D</div>
+      </div>
+    </div>
+
+    <!-- Grid size controller.  Remains unchanged but relocated into overlay via CSS. -->
+    <div id="grid-control" class="grid-control hidden">
+      <button class="grid-btn grid-btn-top" data-dir="increase-height" aria-label="Increase rows"></button>
+      <button class="grid-btn grid-btn-right" data-dir="increase-width" aria-label="Increase columns"></button>
+      <button class="grid-btn grid-btn-bottom" data-dir="decrease-height" aria-label="Decrease rows"></button>
+      <button class="grid-btn grid-btn-left" data-dir="decrease-width" aria-label="Decrease columns"></button>
+      <div id="grid-size-display" class="grid-size-display">16×16</div>
+    </div>
+
+    <!-- Popup for configuring a newly created Terra Height object -->
+    <div id="height-popup" class="height-popup hidden">
+      <div class="height-popup-content">
+        <h3>Height Settings</h3>
+        <label>Radius: <input id="height-radius" type="number" min="1" max="10" value="1" /></label>
+        <label>Height: <input id="height-value" type="number" min="-10" max="10" value="1" /></label>
+        <div class="button-row">
+          <button id="height-apply">Apply</button>
+          <button id="height-cancel" class="secondary">Cancel</button>
+          <button id="height-delete" class="secondary">Delete</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
