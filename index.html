@@ -57,11 +57,11 @@
     <!-- Load the PlayCanvas engine from a CDN.  This provides a global `pc` object
          that can be referenced from our main script.  We avoid using the ES
          module version so that the application can run without bundling. -->
-    <script src="https://cdn.jsdelivr.net/npm/playcanvas@1.65.1/build/playcanvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/playcanvas@1.65.1/build/playcanvas.min.js" defer></script>
 
     <!-- Load the main application script.  It relies on the globally exposed
          PlayCanvas `pc` object and therefore should not be loaded as a module. -->
-    <script src="main.js"></script>
+    <script src="main.js" defer></script>
 
     <!-- Controls overlay: contains the layer selector, the add-height button, and the WASD compass. -->
     <div id="controls-overlay">
